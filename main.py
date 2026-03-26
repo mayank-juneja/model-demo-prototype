@@ -60,6 +60,28 @@ def _restart_gradio() -> None:
 _start_gradio()
 
 
+# ── Streamlit subprocess management ───────────────────────────────────────────
+
+_streamlit_proc: Optional[subprocess.Popen] = None
+
+
+def _start_streamlit() -> None:
+    global _streamlit_proc
+    _streamlit_proc = subprocess.Popen(
+        [
+            sys.executable, "-m", "streamlit", "run", "kyc_risk_streamlit.py",
+            "--server.port=8501",
+            "--server.headless=true",
+            "--server.address=0.0.0.0",
+            "--browser.gatherUsageStats=false",
+        ],
+        cwd=str(HERE),
+    )
+
+
+_start_streamlit()
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
@@ -117,6 +139,49 @@ def _do_share() -> Optional[str]:
         if m:
             return m.group(0)
     return None
+
+
+_streamlit_tunnel_proc: Optional[subprocess.Popen] = None
+
+
+def _do_streamlit_share() -> Optional[str]:
+    """Open an SSH reverse tunnel to serveo.net for port 8501, return the public URL."""
+    global _streamlit_tunnel_proc
+    if _streamlit_tunnel_proc and _streamlit_tunnel_proc.poll() is None:
+        _streamlit_tunnel_proc.terminate()
+        time.sleep(1)
+    proc = subprocess.Popen(
+        [
+            "ssh", "-R", "80:localhost:8501",
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "ServerAliveInterval=30",
+            "-o", "ExitOnForwardFailure=yes",
+            "serveo.net",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    _streamlit_tunnel_proc = proc
+    deadline = time.time() + 60
+    for line in proc.stdout:
+        print("[streamlit-share]", line, end="", flush=True)
+        if time.time() > deadline:
+            break
+        m = re.search(r"https?://\S+\.serveo\.net", line)
+        if m:
+            return m.group(0)
+    return None
+
+
+@app.post("/api/streamlit-share")
+async def streamlit_share():
+    loop = asyncio.get_event_loop()
+    url = await loop.run_in_executor(None, _do_streamlit_share)
+    if not url:
+        raise HTTPException(status_code=500, detail="Could not get share URL — check localtunnel logs.")
+    return {"url": url}
 
 
 @app.post("/api/share")

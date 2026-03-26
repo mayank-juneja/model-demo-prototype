@@ -446,15 +446,31 @@ svg { display: block; }
   font-size: 11px; color: #aaa; flex-shrink: 0;
 }
 #terminal-output {
-  flex: 1; overflow-y: auto; padding: 14px 18px;
+  flex: 1; overflow-y: auto; padding: 14px 18px 6px;
   font-family: 'SFMono-Regular','Courier New',Courier,monospace;
-  font-size: 12.5px; line-height: 1.7; white-space: pre;
+  font-size: 12.5px; line-height: 1.7; white-space: pre-wrap;
   color: #e0e0e0; background: #1e1e1e;
 }
 .term-line-cmd  { color: #80cbc4; }
 .term-line-info { color: #b0bec5; }
-.term-line-url  { color: #82b1ff; text-decoration: underline; cursor: pointer; }
+.term-line-ok   { color: #a5d6a7; }
+.term-line-err  { color: #ef9a9a; }
+.term-line-url  { color: #82b1ff; text-decoration: underline; cursor: pointer; white-space: pre-wrap; }
 .term-line-url:hover::after { content: ' 📋'; font-size: 11px; opacity: 0.7; }
+.term-input-row {
+  display: flex; align-items: center; padding: 4px 18px 10px;
+  background: #1e1e1e; border-top: 1px solid #2a2a2a; flex-shrink: 0;
+}
+.term-prompt {
+  color: #80cbc4; font-family: 'SFMono-Regular','Courier New',Courier,monospace;
+  font-size: 12.5px; white-space: nowrap; user-select: none; margin-right: 6px;
+}
+#terminal-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: #e0e0e0; caret-color: #80cbc4;
+  font-family: 'SFMono-Regular','Courier New',Courier,monospace; font-size: 12.5px;
+  line-height: 1.7;
+}
 .share-url-bubble {
   display: inline-flex; align-items: center; gap: 8px;
   background: #1e3a5f; border: 1px solid #4a7fbf; border-radius: 6px;
@@ -481,6 +497,14 @@ svg { display: block; }
   flex: 1; display: none; flex-direction: column; overflow: hidden;
 }
 #app-view-panel iframe {
+  flex: 1; border: none; width: 100%; height: 100%;
+}
+
+/* ── KYC view panel (Streamlit iframe) ── */
+#kyc-view-panel {
+  flex: 1; display: none; flex-direction: column; overflow: hidden;
+}
+#kyc-view-panel iframe {
   flex: 1; border: none; width: 100%; height: 100%;
 }
 
@@ -709,6 +733,18 @@ svg { display: block; }
         <span class="fb-mod">2 wks ago</span>
       </div>
 
+      <div class="fb-item" data-type="py" data-name="kyc_risk_streamlit.py">
+        <div class="file-icon icon-py">PY</div>
+        <span class="fb-name">kyc_risk_streamlit.py</span>
+        <span class="fb-mod">Just now</span>
+      </div>
+
+      <div class="fb-item" data-type="py" data-name="kyc_sample_data.py">
+        <div class="file-icon icon-py">PY</div>
+        <span class="fb-name">kyc_sample_data.py</span>
+        <span class="fb-mod">Just now</span>
+      </div>
+
     </div>
   </div>
 
@@ -723,6 +759,10 @@ svg { display: block; }
           <span class="tab-label">credit_memo.ipynb</span>
           <span class="tab-x">×</span>
         </div>
+        <button onclick="openTerminalTab()" title="Open Terminal" style="margin-left:auto;margin-right:4px;flex-shrink:0;background:#2a2a3a;border:1px solid #444;border-radius:4px;color:#ccc;font-size:11px;padding:2px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H4V5h16v14zM6 9.5l1.41-1.41L11 11.67l-3.59 3.58L6 13.84 8.17 11.67 6 9.5zm5 6.5h6v-2h-6v2z"/></svg>
+          Terminal
+        </button>
       </div>
 
       <!-- Notebook toolbar -->
@@ -1132,13 +1172,23 @@ explanation.display()</div>
         <div class="term-bar">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="#aaa"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zM6 8.5l4 3.5-4 3.5V8.5zm4 6.5h8v1H10v-1z"/></svg>
           Terminal
+          <span style="margin-left:auto; cursor:pointer; color:#777; font-size:11px;" onclick="termClear()">Clear</span>
         </div>
         <div id="terminal-output"></div>
+        <div class="term-input-row">
+          <span class="term-prompt">~/demo $</span>
+          <input id="terminal-input" type="text" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="type a command…" />
+        </div>
       </div>
 
-      <!-- App view panel -->
+      <!-- App view panel (Gradio credit memo) -->
       <div id="app-view-panel">
         <iframe id="app-iframe" src="http://127.0.0.1:7860" allow="same-origin"></iframe>
+      </div>
+
+      <!-- KYC Risk Investigator panel (Streamlit) -->
+      <div id="kyc-view-panel">
+        <iframe id="kyc-iframe" src="http://127.0.0.1:8501" allow="same-origin"></iframe>
       </div>
 
     </div><!-- left panel -->
@@ -1275,6 +1325,9 @@ railIcons.forEach(function (icon) {
         setTimeout(function () {
           document.getElementById('chat-input').focus();
         }, 50);
+      } else if (icon.id === 'rail-running') {
+        showSidePanel(null);
+        openTerminalTab();
       } else {
         showSidePanel(null);
         toast(icon.title || 'Panel');
@@ -1575,6 +1628,179 @@ function openAppTab() {
   activateTab(appTab, bar);
 }
 
+function openKycTab() {
+  var bar = document.getElementById('left-tab-bar');
+  var kycTab = bar.querySelector('[data-tab-id="KYC Risk App"]');
+  if (!kycTab) {
+    kycTab = document.createElement('div');
+    kycTab.className = 'jp-tab';
+    kycTab.dataset.tabId = 'KYC Risk App';
+    kycTab.innerHTML = '<span class="tab-label">KYC Risk App</span><span class="tab-x">\xd7</span>';
+    bar.appendChild(kycTab);
+  }
+  document.getElementById('kyc-iframe').src = 'http://127.0.0.1:8501?_t=' + Date.now();
+  activateTab(kycTab, bar);
+}
+
+// ── Interactive terminal ───────────────────────────────────
+var _termHistory = [];
+var _termHistIdx  = -1;
+
+function openTerminalTab() {
+  var bar = document.getElementById('left-tab-bar');
+  var tab = bar.querySelector('[data-tab-id="Terminal"]');
+  if (!tab) {
+    tab = document.createElement('div');
+    tab.className = 'jp-tab';
+    tab.dataset.tabId = 'Terminal';
+    tab.innerHTML = '<span class="tab-label">Terminal</span><span class="tab-x">\xd7</span>';
+    bar.appendChild(tab);
+  }
+  activateTab(tab, bar);
+}
+
+function termPrint(text, cls) {
+  var out = document.getElementById('terminal-output');
+  var div = document.createElement('div');
+  div.className = cls || 'term-line-info';
+  div.textContent = text;
+  out.appendChild(div);
+  out.scrollTop = out.scrollHeight;
+  return div;
+}
+
+function termClear() {
+  document.getElementById('terminal-output').innerHTML = '';
+}
+
+function termExec(raw) {
+  var cmd = raw.trim();
+  termPrint('~/demo $ ' + cmd, 'term-line-cmd');
+  if (!cmd) return;
+  _termHistory.unshift(cmd);
+  _termHistIdx = -1;
+
+  if (cmd === 'clear' || cmd === 'cls') {
+    setTimeout(termClear, 40);
+  } else if (cmd === 'help') {
+    termPrint('', 'term-line-info');
+    termPrint('Available commands:', 'term-line-info');
+    termPrint('  cdao applet run streamlit <file>           Launch Streamlit app in new tab', 'term-line-info');
+    termPrint('  cdao applet run streamlit <file> --share   Create a public share URL', 'term-line-info');
+    termPrint('  clear                                       Clear terminal output', 'term-line-info');
+    termPrint('  help                                        Show this message', 'term-line-info');
+    termPrint('', 'term-line-info');
+  } else if (/^cdao\s+applet\s+run\s+streamlit\s+(\S+)(.*)$/.test(cmd)) {
+    var m = cmd.match(/^cdao\s+applet\s+run\s+streamlit\s+(\S+)(.*)$/);
+    var file = m[1];
+    var flags = (m[2] || '').trim();
+    if (/--share/.test(flags)) {
+      termRunStreamlitShare(file);
+    } else {
+      termRunStreamlit(file);
+    }
+  } else {
+    termPrint('cdao: command not found: ' + cmd.split(' ')[0], 'term-line-err');
+    termPrint('Type "help" for available commands.', 'term-line-info');
+  }
+}
+
+function termRunStreamlit(file) {
+  termPrint('', 'term-line-info');
+  termPrint('  Launching Streamlit \u2192 ' + file, 'term-line-info');
+  setTimeout(function () {
+    termPrint('', 'term-line-info');
+    termPrint('  You can now view your Streamlit app in your browser.', 'term-line-ok');
+    termPrint('  URL: http://127.0.0.1:8501', 'term-line-ok');
+    termPrint('', 'term-line-info');
+    setTimeout(openKycTab, 400);
+  }, 600);
+}
+
+function termRunStreamlitShare(file) {
+  var INIT_LINES = [
+    { cls: 'term-line-cmd',  text: '(base) user@localhost:~/demo$ cdao applet run streamlit ' + file + ' --share', delay: 0 },
+    { cls: 'term-line-info', text: 'Loading Streamlit app…', delay: 500 },
+    { cls: 'term-line-info', text: 'Verifying runtime environment…', delay: 1100 },
+    { cls: 'term-line-info', text: 'Connecting to KYC risk model…', delay: 1800 },
+    { cls: 'term-line-ok',   text: 'Running on local URL:  http://127.0.0.1:8501', delay: 2600 },
+    { cls: 'term-line-info', text: 'Creating public share tunnel…', delay: 3300 },
+  ];
+
+  INIT_LINES.forEach(function (line) {
+    setTimeout(function () { termPrint(line.text, line.cls); }, line.delay);
+  });
+
+  var spinLine = null;
+  setTimeout(function () {
+    spinLine = termPrint('\u23f3 Waiting for public URL…', 'term-line-info');
+  }, 4000);
+
+  // fire real API call in parallel
+  fetch('/api/streamlit-share', { method: 'POST' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (spinLine) { spinLine.remove(); spinLine = null; }
+      var out = document.getElementById('terminal-output');
+      if (data.url) {
+        termPrint('Running on public URL: ' + data.url, 'term-line-ok');
+        var urlEl = document.createElement('div');
+        urlEl.className = 'term-line-url';
+        urlEl.textContent = data.url;
+        urlEl.title = 'Click to copy';
+        urlEl.addEventListener('click', function () { copyToClipboard(data.url); });
+        out.appendChild(urlEl);
+        termPrint('\u2713 Share link is live for 72 hours.', 'term-line-ok');
+        out.scrollTop = out.scrollHeight;
+        appendMessage('assistant', 'KYC app is live! Public URL: <a href="' + data.url + '" target="_blank">' + data.url + '</a>');
+      } else {
+        termPrint('\u2717 Could not create share URL.', 'term-line-err');
+        termPrint('App is accessible locally at http://127.0.0.1:8501', 'term-line-info');
+      }
+    })
+    .catch(function () {
+      if (spinLine) { spinLine.remove(); spinLine = null; }
+      termPrint('\u2717 Share request failed.', 'term-line-err');
+      termPrint('App is accessible locally at http://127.0.0.1:8501', 'term-line-info');
+    });
+}
+
+function initTerminal() {
+  var input = document.getElementById('terminal-input');
+  if (!input) return;
+  // Welcome message
+  termPrint('CDAO Platform Terminal  \u2014  type "help" for commands', 'term-line-ok');
+  termPrint('', 'term-line-info');
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      var val = input.value;
+      input.value = '';
+      termExec(val);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (_termHistIdx < _termHistory.length - 1) {
+        _termHistIdx++;
+        input.value = _termHistory[_termHistIdx];
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (_termHistIdx > 0) {
+        _termHistIdx--;
+        input.value = _termHistory[_termHistIdx];
+      } else {
+        _termHistIdx = -1;
+        input.value = '';
+      }
+    }
+  });
+
+  // Click anywhere in the panel focuses the input
+  document.getElementById('terminal-panel').addEventListener('click', function () {
+    input.focus();
+  });
+}
+
 function sendChat() {
   var input = document.getElementById('chat-input');
   var text = input.value.trim();
@@ -1597,6 +1823,13 @@ function sendChat() {
       appendToolCall('▶️', 'Launching', '<code>creditmemo_gradioapp.py</code>');
       appendMessage('assistant', 'App is ready — opening the Credit Memo App tab.');
       setTimeout(openAppTab, 600);
+    }, 700);
+  } else if (/kyc|risk.*invest|aml|investigat.*risk/i.test(text)) {
+    setTimeout(function () {
+      typingEl.remove();
+      appendToolCall('▶️', 'Launching', '<code>kyc_risk_streamlit.py</code>');
+      appendMessage('assistant', 'Opening the KYC Risk Investigator app.');
+      setTimeout(openKycTab, 600);
     }, 700);
   } else if (/gradio/i.test(text)) {
     // Step 1: show "thinking"
@@ -1795,12 +2028,16 @@ function activateTab(tab, bar) {
     var isNotebook = tabId.endsWith('.ipynb');
     var isTerminal = tabId === 'Terminal';
     var isApp = tabId === 'Credit Memo App';
+    var isKyc = tabId === 'KYC Risk App';
     var isPy = tabId.endsWith('.py');
+    var isSpecial = isNotebook || isTerminal || isApp || isKyc;
     document.getElementById('nb-toolbar').style.display       = isNotebook ? '' : 'none';
     document.getElementById('notebook-scroll').style.display  = isNotebook ? '' : 'none';
-    document.getElementById('file-view-panel').style.display  = (!isNotebook && !isTerminal && !isApp) ? 'flex' : 'none';
+    document.getElementById('file-view-panel').style.display  = !isSpecial ? 'flex' : 'none';
     document.getElementById('terminal-panel').style.display   = isTerminal ? 'flex' : 'none';
+    if (isTerminal) { setTimeout(function () { document.getElementById('terminal-input').focus(); }, 60); }
     document.getElementById('app-view-panel').style.display   = isApp ? 'flex' : 'none';
+    document.getElementById('kyc-view-panel').style.display   = isKyc ? 'flex' : 'none';
     document.getElementById('status-filename').textContent = tabId;
     if (isPy) { loadFileIntoTab(tabId); }
   }
@@ -1858,6 +2095,7 @@ function openTabInPanel(barId, name, panelId) {
 }
 
 setupTabBar('left-tab-bar');
+initTerminal();
 
 // ── Iframe auto-refresh (hot-reload support) ────────────────
 (function () {
